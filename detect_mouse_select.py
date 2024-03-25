@@ -2,10 +2,14 @@ import cv2
 import supervision as sv
 import numpy as np
 from ultralytics import YOLO
+import logging
 
 import utils
 
-tracked_objects = []
+
+max_objects = 3
+tracked_objects = {}
+free_positions = [i for i in range(1, max_objects+1)]
 
 
 class MyTracker(sv.ByteTrack):
@@ -27,6 +31,32 @@ class MouseClickHandler:
         self.detections = detections
         self.selected_tracker_id = None
 
+    def add_remove_object(self, tracker_id):  # tracked_objects -> dict
+        if tracker_id in tracked_objects.values():
+            logging.info(f'ID {tracker_id} is already being tracked')
+            keys_to_remove = [key for key, value in tracked_objects.items() if value == tracker_id]
+            for key in keys_to_remove:
+                tracked_objects.pop(key)
+                logging.info(f'ID {tracker_id} removed from tracking')
+                logging.info(f'Updated positions: {tracked_objects}')
+                free_positions.append(key)
+        elif not free_positions:
+            logging.warning("No free boxes available")
+        else:
+            free_position_id = free_positions.pop(0)
+            tracked_objects[free_position_id] = tracker_id
+            logging.info(f'ID {tracker_id} added to tracking at position {free_position_id}')
+            logging.info(f'Updated positions: {tracked_objects}')
+
+    def get_free_position_id(self) -> int():
+        return free_positions[0] if free_positions else None
+
+    def get_next_position_id(self):
+        if len(tracked_objects) < 3:
+            return self.get_free_position_id()
+        return min(tracked_objects.keys())
+    ######
+
     def handle_click(self, event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
             # check whether one of the existing objects is clicked
@@ -37,17 +67,13 @@ class MouseClickHandler:
                     # Save tracker-ID
                     self.selected_tracker_id = tracker_id
                     # add tracker id
-                    if self.selected_tracker_id not in tracked_objects:
-                        if len(tracked_objects) < self.max_tracked_objects:
-                            tracked_objects.append(self.selected_tracker_id)
-                        print(f"tracked_objects: {tracked_objects}")
-                    else:
-                        # Removes an object from the list if it is already there
-                        tracked_objects.remove(self.selected_tracker_id)
-                    break
+                    self.add_remove_object(self.selected_tracker_id)
 
-    def get_tracked_objects(self):
+    def get_tracked_objects(self) -> dict:
         return tracked_objects
+
+    def get_list_tracked_objects(self) -> list:
+        return list(tracked_objects.values())
 
     def get_selected_tracker_id(self):
         return self.selected_tracker_id
@@ -95,7 +121,11 @@ def main():
         # Using the ID selected by the cursor
         selected_tracker_id = mouse_handler.get_selected_tracker_id()
         if tracked_objects is not None:
-            detections = detections[np.isin(detections.tracker_id, tracked_objects)]
+            # objects = list(tracked_objects.values())
+            detections = detections[
+                np.isin(detections.tracker_id,
+                        mouse_handler.get_list_tracked_objects())
+            ]
 
         # # Visualization of the text of the selected object in the upper left corner
         for tracker_id in zip(detections.tracker_id):
