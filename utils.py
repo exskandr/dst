@@ -24,11 +24,23 @@ def draw_tracked_objects(frame, tracked_objects):
         cv2.putText(frame, text, (10, 30), font, font_scale, font_color, thickness)
         return
 
-    # Display the ID of each tracked object
-    for i, track_id in enumerate(tracked_objects):
+    # # Display the ID of each tracked object(for list)
+    # for i, track_id in enumerate(tracked_objects):
+    #     font_scale = 0.9
+    #     text = f"DRONE: {i + 1} - ID: {track_id}"
+    #     cv2.putText(frame, text, (x, y + 35 * i), font, font_scale, font_color, thickness)
+    #
+    #     # Frame display
+    #     cv2.rectangle(frame, (x-10, y-30), (x+280, y+10+35*i), (255, 255, 0), thickness)
+
+    # Display the ID of each tracked object(for dict)
+    for key, value in tracked_objects.items():
+        text = f"DRONE: {key} - ID: {value}"
         font_scale = 0.9
-        text = f"DRONE: {i + 1} - ID: {track_id}"
-        cv2.putText(frame, text, (x, y + 35 * i), font, font_scale, font_color, thickness)
+        cv2.putText(frame, text, (x, y + 35 * (key-1)), font, font_scale, font_color, thickness)
 
         # Frame display
-        cv2.rectangle(frame, (x-10, y-30), (x+280, y+10+35*i), (255, 255, 0), thickness)
+        cv2.rectangle(frame, (x - 10, y - 30), (x + 280, y + 10 + 35 * (key-1)), (255, 255, 0), thickness)
+
+
+# work with adding detect object to some position
